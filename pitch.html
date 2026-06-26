@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Let Me Cook — Daytona Hackathon Pitch</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#050810;
+    --surface:rgba(255,255,255,0.04);
+    --border:rgba(255,255,255,0.08);
+    --green:#00FF94;
+    --blue:#4F8EF7;
+    --purple:#B06EFF;
+    --orange:#FF6B35;
+    --red:#FF4757;
+    --teal:#00D4FF;
+    --gold:#FFD700;
+  }
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Inter',sans-serif;color:#fff}
+
+  /* ── CANVAS PARTICLES ─────────────────────────────────────────────────── */
+  #particles{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+  /* ── PROGRESS BAR ─────────────────────────────────────────────────────── */
+  #progress-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--green),var(--blue),var(--purple));z-index:100;transition:width .4s ease}
+
+  /* ── HUD ──────────────────────────────────────────────────────────────── */
+  #hud{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:100;display:flex;gap:12px;align-items:center}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2);cursor:pointer;transition:.3s}
+  .dot.active{background:var(--green);box-shadow:0 0 8px var(--green)}
+
+  #timer{position:fixed;top:20px;right:24px;z-index:100;font-family:'JetBrains Mono',monospace;font-size:13px;color:rgba(255,255,255,0.4);letter-spacing:2px}
+  #timer.warn{color:var(--orange);animation:pulse 1s infinite}
+  #timer.danger{color:var(--red);animation:pulse .5s infinite}
+
+  #slide-counter{position:fixed;top:20px;left:24px;z-index:100;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:1px}
+
+  #nav-hint{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,0.2);letter-spacing:2px;z-index:100}
+
+  /* ── SLIDES CONTAINER ─────────────────────────────────────────────────── */
+  #slides{position:fixed;inset:0;z-index:10}
+  .slide{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    padding:60px 80px;
+    opacity:0;transform:translateY(40px) scale(.97);
+    transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1);
+    pointer-events:none;
+  }
+  .slide.active{opacity:1;transform:translateY(0) scale(1);pointer-events:all}
+  .slide.exit{opacity:0;transform:translateY(-40px) scale(1.02)}
+
+  /* ── TYPOGRAPHY ──────────────────────────────────────────────────────── */
+  .eyebrow{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--green);margin-bottom:16px;font-weight:600}
+  .headline{font-size:clamp(36px,5vw,72px);font-weight:900;line-height:1.05;text-align:center;letter-spacing:-2px}
+  .sub{font-size:clamp(16px,2vw,22px);color:rgba(255,255,255,0.55);text-align:center;margin-top:20px;line-height:1.6;max-width:700px}
+  .accent-green{color:var(--green)}
+  .accent-blue{color:var(--blue)}
+  .accent-purple{color:var(--purple)}
+  .accent-orange{color:var(--orange)}
+  .accent-teal{color:var(--teal)}
+
+  /* ── GLASS CARD ──────────────────────────────────────────────────────── */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:28px 32px;
+    backdrop-filter:blur(20px);
+  }
+  .card-glow-green{box-shadow:0 0 40px rgba(0,255,148,0.08),inset 0 1px 0 rgba(0,255,148,0.12)}
+  .card-glow-blue{box-shadow:0 0 40px rgba(79,142,247,0.08),inset 0 1px 0 rgba(79,142,247,0.12)}
+  .card-glow-purple{box-shadow:0 0 40px rgba(176,110,255,0.08),inset 0 1px 0 rgba(176,110,255,0.12)}
+
+  /* ── CODE BLOCK ──────────────────────────────────────────────────────── */
+  .code{
+    font-family:'JetBrains Mono',monospace;font-size:13px;
+    background:#0D1117;border:1px solid rgba(255,255,255,0.07);
+    border-radius:12px;padding:20px 24px;line-height:1.8;
+    text-align:left;max-width:680px;width:100%;
+    box-shadow:0 0 60px rgba(0,212,255,0.06);
+  }
+  .code .kw{color:#FF79C6}
+  .code .fn{color:#50FA7B}
+  .code .str{color:#F1FA8C}
+  .code .cm{color:#6272A4}
+  .code .num{color:#BD93F9}
+  .code .var{color:#8BE9FD}
+
+  /* ── PILL TAGS ────────────────────────────────────────────────────────── */
+  .pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;
+    letter-spacing:.5px;white-space:nowrap;
+  }
+  .pill-green{background:rgba(0,255,148,0.12);color:var(--green);border:1px solid rgba(0,255,148,0.2)}
+  .pill-blue{background:rgba(79,142,247,0.12);color:var(--blue);border:1px solid rgba(79,142,247,0.2)}
+  .pill-purple{background:rgba(176,110,255,0.12);color:var(--purple);border:1px solid rgba(176,110,255,0.2)}
+  .pill-orange{background:rgba(255,107,53,0.12);color:var(--orange);border:1px solid rgba(255,107,53,0.2)}
+  .pill-red{background:rgba(255,71,87,0.12);color:var(--red);border:1px solid rgba(255,71,87,0.2)}
+  .pill-teal{background:rgba(0,212,255,0.12);color:var(--teal);border:1px solid rgba(0,212,255,0.2)}
+  .pill-gold{background:rgba(255,215,0,0.12);color:var(--gold);border:1px solid rgba(255,215,0,0.2)}
+
+  /* ── FLOW STEP ────────────────────────────────────────────────────────── */
+  .flow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+  .flow-step{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:20px 24px;border-radius:14px;min-width:110px;
+    background:var(--surface);border:1px solid var(--border);
+    font-size:13px;color:rgba(255,255,255,0.7);text-align:center;
+  }
+  .flow-step .icon{font-size:28px}
+  .flow-step strong{font-size:14px;color:#fff;font-weight:700}
+  .flow-arrow{font-size:24px;color:rgba(255,255,255,0.2)}
+
+  /* ── CAULDRON ANIMATION ────────────────────────────────────────────────── */
+  .cauldron-wrap{position:relative;width:160px;height:160px}
+  .cauldron-svg{width:160px;height:160px}
+  .bubble{
+    position:absolute;border-radius:50%;
+    background:radial-gradient(circle,var(--green),transparent);
+    animation:bubble-rise 2s ease-in infinite;
+    opacity:0;
+  }
+  @keyframes bubble-rise{
+    0%{transform:translateY(0) scale(1);opacity:.8}
+    100%{transform:translateY(-80px) scale(0);opacity:0}
+  }
+
+  /* ── NUMBER STAT ───────────────────────────────────────────────────────── */
+  .stat{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .stat .big{font-size:clamp(40px,6vw,80px);font-weight:900;line-height:1;letter-spacing:-3px}
+  .stat .label{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4)}
+
+  /* ── GLOW TEXT ─────────────────────────────────────────────────────────── */
+  .glow-green{text-shadow:0 0 30px rgba(0,255,148,.6),0 0 60px rgba(0,255,148,.3)}
+  .glow-blue{text-shadow:0 0 30px rgba(79,142,247,.6),0 0 60px rgba(79,142,247,.3)}
+  .glow-purple{text-shadow:0 0 30px rgba(176,110,255,.6),0 0 60px rgba(176,110,255,.3)}
+
+  /* ── ANIMATIONS ────────────────────────────────────────────────────────── */
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  @keyframes glow-pulse{0%,100%{box-shadow:0 0 20px rgba(0,255,148,.2)}50%{box-shadow:0 0 50px rgba(0,255,148,.5),0 0 100px rgba(0,255,148,.2)}}
+
+  .float{animation:float 4s ease-in-out infinite}
+  .spin-slow{animation:spin 20s linear infinite}
+
+  /* ── GRID LAYOUTS ──────────────────────────────────────────────────────── */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:900px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;width:100%;max-width:900px}
+  .grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;width:100%;max-width:900px}
+
+  /* ── SLIDE 1: HERO ──────────────────────────────────────────────────────── */
+  #s1 .logo-ring{
+    width:120px;height:120px;border-radius:50%;
+    background:conic-gradient(var(--green),var(--blue),var(--purple),var(--green));
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:32px;
+    animation:spin 8s linear infinite,glow-pulse 3s ease-in-out infinite;
+  }
+  #s1 .logo-inner{
+    width:110px;height:110px;border-radius:50%;
+    background:var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    font-size:52px;
+  }
+  #s1 .tagline{
+    margin-top:24px;font-size:13px;letter-spacing:3px;
+    text-transform:uppercase;color:rgba(255,255,255,0.35);
+  }
+
+  /* ── SLIDE 2: PROBLEM ────────────────────────────────────────────────────── */
+  .chaos-grid{
+    display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:800px;
+    margin:24px 0;
+  }
+  .chaos-pill{
+    padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;
+    border:1px solid;animation:float 3s ease-in-out infinite;
+  }
+  .chaos-pill:nth-child(odd){animation-delay:-.5s}
+  .chaos-pill:nth-child(3n){animation-delay:-1s}
+  .question-mark{font-size:clamp(60px,8vw,100px);font-weight:900;animation:pulse 2s infinite}
+
+  /* ── SLIDE 5: HOW DAYTONA WORKS ──────────────────────────────────────────── */
+  .sdk-highlight{
+    background:linear-gradient(135deg,rgba(0,212,255,.06),rgba(0,255,148,.06));
+    border:1px solid rgba(0,212,255,.15);
+    border-radius:16px;padding:24px 28px;max-width:680px;width:100%;
+  }
+  .sdk-feature{display:flex;align-items:flex-start;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .sdk-feature:last-child{border-bottom:none}
+  .sdk-icon{font-size:22px;flex-shrink:0;margin-top:2px}
+  .sdk-text strong{font-size:14px;color:#fff}
+  .sdk-text span{font-size:13px;color:rgba(255,255,255,.5);display:block;margin-top:3px}
+
+  /* ── SLIDE 6: ARCHITECTURE ────────────────────────────────────────────────── */
+  .arch-box{
+    padding:14px 20px;border-radius:10px;font-size:13px;font-weight:600;
+    text-align:center;
+  }
+
+  /* ── SLIDE 8: CTA ─────────────────────────────────────────────────────────── */
+  .cta-url{
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(16px,2.5vw,24px);
+    color:var(--green);
+    border:1px solid rgba(0,255,148,.2);
+    background:rgba(0,255,148,.05);
+    padding:16px 32px;border-radius:12px;
+    animation:glow-pulse 3s ease-in-out infinite;
+    letter-spacing:1px;
+    margin-top:16px;
+  }
+  .qr-placeholder{
+    width:120px;height:120px;border:2px solid rgba(0,255,148,.3);
+    border-radius:12px;display:flex;align-items:center;justify-content:center;
+    font-size:40px;background:rgba(0,255,148,.04);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+<div id="progress-bar" style="width:12.5%"></div>
+<div id="slide-counter">01 / 08</div>
+<div id="timer">4:00</div>
+<div id="nav-hint">← → SPACE · NAVIGATE</div>
+
+<!-- ─── DOTS HUD ──────────────────────────────────────────────────────────── -->
+<div id="hud">
+  <div class="dot active" onclick="goTo(0)"></div>
+  <div class="dot" onclick="goTo(1)"></div>
+  <div class="dot" onclick="goTo(2)"></div>
+  <div class="dot" onclick="goTo(3)"></div>
+  <div class="dot" onclick="goTo(4)"></div>
+  <div class="dot" onclick="goTo(5)"></div>
+  <div class="dot" onclick="goTo(6)"></div>
+  <div class="dot" onclick="goTo(7)"></div>
+</div>
+
+<div id="slides">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SLIDE 1 — HERO
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="slide active" id="s1">
+    <div class="logo-ring">
+      <div class="logo-inner">🍲</div>
+    </div>
+    <div class="eyebrow">Daytona Hackathon · June 2026</div>
+    <h1 class="headline">
+      <span class="accent-green glow-green">Let Me Cook</span>
+    </h1>
+    <p class="sub">Build your app <em>multiple ways</em>, simultaneously.<br/>Powered by Daytona isolated sandboxes.</p>
+    <div style="display:flex;gap:12px;margin-top:32px;flex-wrap:wrap;justify-content:center">
+      <span class="pill pill-green">🧪 Parallel Sandboxes</span>
+      <span class="pill pill-blue">🤖 AI-Powered</span>
+      <span class="pill pill-teal">⚡ Daytona SDK</span>
+      <span class="pill pill-purple">🎨 Real Previews</span>
+    </div>
+    <p class="tagline">Stop guessing. Start cooking.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SLIDE 2 — THE PROBLEM
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s2">
+    <div class="eyebrow">The Problem</div>
+    <h2 class="headline">Every dev faces<br/><span class="accent-orange">stack paralysis</span></h2>
+    <div class="chaos-grid">
+      <span class="chaos-pill" style="color:#00FF94;border-color:rgba(0,255,148,.3);background:rgba(0,255,148,.06)">Supabase</span>
+      <span class="chaos-pill" style="color:#4F8EF7;border-color:rgba(79,142,247,.3);background:rgba(79,142,247,.06)">PlanetScale</span>
+      <span class="chaos-pill" style="color:#FF6B35;border-color:rgba(255,107,53,.3);background:rgba(255,107,53,.06)">MongoDB</span>
+      <span class="chaos-pill" style="color:#B06EFF;border-color:rgba(176,110,255,.3);background:rgba(176,110,255,.06)">Firebase</span>
+      <span class="chaos-pill" style="color:#FF4757;border-color:rgba(255,71,87,.3);background:rgba(255,71,87,.06)">Auth0</span>
+      <span class="chaos-pill" style="color:#00D4FF;border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.06)">Clerk</span>
+      <span class="chaos-pill" style="color:#FFD700;border-color:rgba(255,215,0,.3);background:rgba(255,215,0,.06)">Algolia</span>
+      <span class="chaos-pill" style="color:#00FF94;border-color:rgba(0,255,148,.3);background:rgba(0,255,148,.06)">Stripe</span>
+      <span class="chaos-pill" style="color:#4F8EF7;border-color:rgba(79,142,247,.3);background:rgba(79,142,247,.06)">Cloudinary</span>
+      <span class="chaos-pill" style="color:#B06EFF;border-color:rgba(176,110,255,.3);background:rgba(176,110,255,.06)">Typesense</span>
+      <span class="chaos-pill" style="color:#FF6B35;border-color:rgba(255,107,53,.3);background:rgba(255,107,53,.06)">Resend</span>
+      <span class="chaos-pill" style="color:#FF4757;border-color:rgba(255,71,87,.3);background:rgba(255,71,87,.06)">NextAuth</span>
+    </div>
+    <div class="card" style="margin-top:8px;max-width:640px;text-align:center">
+      <p style="font-size:18px;line-height:1.7;color:rgba(255,255,255,.7)">
+        You pick one. Build for <strong style="color:#fff">two weeks</strong>.<br/>
+        Then wonder if the other option was better.<br/>
+        <span style="color:var(--orange);font-weight:700">You committed blind.</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SLIDE 3 — THE SOLUTION
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s3">
+    <div class="eyebrow">The Solution</div>
+    <h2 class="headline"><span class="accent-green glow-green">Parallel app builder.</span><br/>Pick the best stack.</h2>
+    <p class="sub" style="margin-bottom:32px">Describe your app. Assemble ingredient stacks into cauldrons.<br/>Hit <strong style="color:var(--green)">Cook</strong> — Daytona builds each one simultaneously.</p>
+    <div class="grid-3" style="max-width:780px">
+      <div class="card card-glow-green" style="text-align:center">
+        <div style="font-size:40px;margin-bottom:12px">💬</div>
+        <strong style="font-size:15px">1. Describe</strong>
+        <p style="font-size:13px;color:rgba(255,255,255,.5);margin-top:8px">"I want to build a marketplace for freelancers"</p>
+      </div>
+      <div class="card card-glow-blue" style="text-align:center">
+        <div style="font-size:40px;margin-bottom:12px">🧩</div>
+        <strong style="font-size:15px">2. Assemble</strong>
+        <p style="font-size:13px;color:rgba(255,255,255,.5);margin-top:8px">Drag ingredient chips into cauldrons — mix different stacks</p>
+      </div>
+      <div class="card card-glow-purple" style="text-align:center">
+        <div style="font-size:40px;margin-bottom:12px">🍳</div>
+        <strong style="font-size:15px">3. Cook</strong>
+        <p style="font-size:13px;color:rgba(255,255,255,.5);margin-top:8px">Daytona spins up a sandbox per cauldron. Preview appears.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SLIDE 4 — THE MAGIC MOMENT
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s4">
+    <div class="eyebrow">The Magic Moment</div>
+    <h2 class="headline">Click <span class="accent-green glow-green">▶ Cook.</span><br/>Watch it come alive.</h2>
+    <div style="display:flex;gap:40px;align-items:center;margin-top:32px;flex-wrap:wrap;justify-content:center">
+      <!-- Cauldron A -->
+      <div style="text-align:center">
+        <div class="card card-glow-green" style="padding:24px;min-width:200px">
+          <div style="font-size:11px;letter-spacing:3px;color:var(--green);margin-bottom:12px">CAULDRON A</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px">
+            <span class="pill pill-orange" style="font-size:11px">Stripe</span>
+            <span class="pill pill-teal" style="font-size:11px">Supabase</span>
+            <span class="pill pill-blue" style="font-size:11px">Algolia</span>
+          </div>
+          <div id="cauldron-a" style="font-size:36px;animation:float 2s ease-in-out infinite">🍲</div>
+          <div id="status-a" style="font-size:11px;color:var(--green);margin-top:8px;letter-spacing:2px">● COOKING</div>
+          <div style="margin-top:12px;height:3px;border-radius:2px;background:rgba(0,255,148,.15);overflow:hidden">
+            <div id="bar-a" style="height:100%;background:var(--green);border-radius:2px;animation:cook-bar 3s ease forwards"></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:28px;color:rgba(255,255,255,.15)">VS</div>
+      <!-- Cauldron B -->
+      <div style="text-align:center">
+        <div class="card card-glow-blue" style="padding:24px;min-width:200px">
+          <div style="font-size:11px;letter-spacing:3px;color:var(--blue);margin-bottom:12px">CAULDRON B</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px">
+            <span class="pill pill-red" style="font-size:11px">Clerk</span>
+            <span class="pill pill-blue" style="font-size:11px">PlanetScale</span>
+            <span class="pill pill-purple" style="font-size:11px">Typesense</span>
+          </div>
+          <div style="font-size:36px;animation:float 2.5s ease-in-out infinite">🫕</div>
+          <div style="font-size:11px;color:var(--blue);margin-top:8px;letter-spacing:2px">● COOKING</div>
+          <div style="margin-top:12px;height:3px;border-radius:2px;background:rgba(79,142,247,.15);overflow:hidden">
+            <div style="height:100%;background:var(--blue);border-radius:2px;animation:cook-bar 4s ease forwards .5s"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:24px;font-size:16px">Each cauldron = one <strong style="color:var(--teal)">Daytona isolated sandbox</strong>.<br/>Both cook simultaneously. No conflicts. No shared state.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SLIDE 5 — WHY DAYTONA
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s5">
+    <div class="eyebrow">Why Daytona</div>
+    <h2 class="headline" style="font-size:clamp(28px,4vw,56px)">Daytona makes<br/><span class="accent-teal">parallel sandboxes</span> trivial.</h2>
+    <div style="display:flex;gap:24px;width:100%;max-width:900px;margin-top:28px;align-items:flex-start;flex-wrap:wrap;justify-content:center">
+      <div class="sdk-highlight">
+        <div class="sdk-feature">
+          <div class="sdk-icon">🔒</div>
+          <div class="sdk-text"><strong>True Isolation</strong><span>Each cauldron is a separate environment. Zero port conflicts, zero shared state.</span></div>
+        </div>
+        <div class="sdk-feature">
+          <div class="sdk-icon">🗑️</div>
+          <div class="sdk-text"><strong>Auto-cleanup</strong><span><code style="color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:12px">autoDeleteInterval: 1440</code> — sandboxes self-destruct after 24h.</span></div>
+        </div>
+        <div class="sdk-feature">
+          <div class="sdk-icon">📁</div>
+          <div class="sdk-text"><strong>File Upload API</strong><span><code style="color:var(--green);font-family:'JetBrains Mono',monospace;font-size:12px">sandbox.fs.uploadFile()</code> — push AI-generated HTML directly.</span></div>
+        </div>
+        <div class="sdk-feature">
+          <div class="sdk-icon">⚙️</div>
+          <div class="sdk-text"><strong>Process API</strong><span><code style="color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:12px">sandbox.process.executeSessionCommand()</code> — start servers instantly.</span></div>
+        </div>
+      </div>
+      <div class="code" style="font-size:12px">
+<span class="cm">// All it takes to spin up a sandbox</span>
+<br/><span class="kw">const</span> <span class="var">sandbox</span> = <span class="kw">await</span> <span class="fn">daytona</span>.<span class="fn">create</span>({
+<br/>&nbsp;&nbsp;<span class="var">language</span>: <span class="str">"typescript"</span>,
+<br/>&nbsp;&nbsp;<span class="var">autoStopInterval</span>: <span class="num">30</span>,
+<br/>&nbsp;&nbsp;<span class="var">autoDeleteInterval</span>: <span class="num">1440</span>,
+<br/>});
+<br/>
+<br/><span class="cm">// Upload AI-generated HTML</span>
+<br/><span class="kw">await</span> <span class="var">sandbox</span>.<span class="fn">fs</span>.<span class="fn">uploadFile</span>(
+<br/>&nbsp;&nbsp;<span class="fn">Buffer</span>.<span class="fn">from</span>(<span class="var">html</span>, <span class="str">"utf-8"</span>),
+<br/>&nbsp;&nbsp;<span class="str">"index.html"</span>
+<br/>);
+<br/>
+<br/><span class="cm">// Start the preview server</span>
+<br/><span class="kw">await</span> <span class="var">sandbox</span>.<span class="fn">process</span>.<span class="fn">executeSessionCommand</span>(
+<br/>&nbsp;&nbsp;<span class="var">sessionId</span>, {
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">command</span>: <span class="str">"python3 -m http.server 3000"</span>,
+<br/>&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">runAsync</span>: <span class="kw">true</span>,
+<br/>&nbsp;&nbsp;}
+<br/>);
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SLIDE 6 — ARCHITECTURE
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s6">
+    <div class="eyebrow">Architecture</div>
+    <h2 class="headline" style="font-size:clamp(28px,4vw,52px)">Clean. Fast.<br/><span class="accent-blue">Production-grade.</span></h2>
+    <div style="margin-top:28px;display:flex;flex-direction:column;gap:12px;align-items:center;width:100%;max-width:860px">
+      <!-- Row 1 -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+        <div class="arch-box" style="background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.2);color:var(--blue)">Next.js 16<br/><span style="font-size:11px;color:rgba(255,255,255,.4)">App Router + API</span></div>
+        <div class="arch-box" style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);color:var(--teal)">Featherless AI<br/><span style="font-size:11px;color:rgba(255,255,255,.4)">Qwen2.5-7B</span></div>
+        <div class="arch-box" style="background:rgba(176,110,255,.1);border:1px solid rgba(176,110,255,.2);color:var(--purple)">Mobbin MCP<br/><span style="font-size:11px;color:rgba(255,255,255,.4)">Design Tokens</span></div>
+      </div>
+      <div style="font-size:20px;color:rgba(255,255,255,.2)">↓</div>
+      <!-- Row 2 — Daytona -->
+      <div class="arch-box" style="background:linear-gradient(135deg,rgba(0,255,148,.1),rgba(0,212,255,.1));border:1px solid rgba(0,255,148,.25);color:var(--green);padding:20px 40px;animation:glow-pulse 3s ease-in-out infinite">
+        <div style="font-size:11px;letter-spacing:3px;margin-bottom:8px;color:rgba(0,255,148,.7)">POWERED BY</div>
+        <strong style="font-size:20px">Daytona SDK</strong>
+        <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Parallel isolated sandboxes · Auto-delete · File & Process APIs</div>
+      </div>
+      <div style="font-size:20px;color:rgba(255,255,255,.2)">↓</div>
+      <!-- Row 3 — Outputs -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+        <div class="arch-box" style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.2);color:var(--orange)">🏦 Banking UI</div>
+        <div class="arch-box" style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.2);color:var(--orange)">🛒 Marketplace</div>
+        <div class="arch-box" style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.2);color:var(--orange)">🍕 Food Delivery</div>
+        <div class="arch-box" style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.2);color:var(--orange)">📊 SaaS Dashboard</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SLIDE 7 — DESIGN SUPERPOWER
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s7">
+    <div class="eyebrow">Design Superpower</div>
+    <h2 class="headline" style="font-size:clamp(26px,4vw,52px)">Previews that look<br/><span class="accent-purple glow-purple">production-real.</span></h2>
+    <p class="sub" style="font-size:15px;margin-bottom:24px">Mobbin-powered design tokens. Each preview mimics real apps.</p>
+    <div class="grid-4" style="max-width:860px">
+      <div class="card" style="text-align:center;border-color:rgba(0,212,255,.15)">
+        <div style="font-size:28px">🏦</div>
+        <div style="font-size:12px;font-weight:700;margin-top:8px;color:var(--teal)">Banking</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:4px">N26 · Monzo · Starling<br/>Dark teal, balance hero</div>
+      </div>
+      <div class="card" style="text-align:center;border-color:rgba(176,110,255,.15)">
+        <div style="font-size:28px">🛍️</div>
+        <div style="font-size:12px;font-weight:700;margin-top:8px;color:var(--purple)">Marketplace</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:4px">Vinted · Etsy<br/>Product grid, filters</div>
+      </div>
+      <div class="card" style="text-align:center;border-color:rgba(255,71,87,.15)">
+        <div style="font-size:28px">🍕</div>
+        <div style="font-size:12px;font-weight:700;margin-top:8px;color:var(--red)">Food Delivery</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:4px">DoorDash · Deliveroo<br/>Red accent, cards</div>
+      </div>
+      <div class="card" style="text-align:center;border-color:rgba(79,142,247,.15)">
+        <div style="font-size:28px">📊</div>
+        <div style="font-size:12px;font-weight:700;margin-top:8px;color:var(--blue)">SaaS</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:4px">Mixpanel · Linear<br/>KPI cards, charts</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;justify-content:center">
+      <span class="pill pill-purple">+ Fitness</span>
+      <span class="pill pill-gold">+ Travel</span>
+      <span class="pill pill-teal">+ E-commerce</span>
+      <span class="pill pill-green">+ Social</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SLIDE 8 — CTA
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="slide" id="s8">
+    <div class="eyebrow">Try it now</div>
+    <h2 class="headline">
+      Stop choosing blind.<br/>
+      <span class="accent-green glow-green">Let Me Cook.</span>
+    </h2>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:32px">
+      <div class="cta-url">let-me-cook-rust.vercel.app</div>
+      <div style="display:flex;gap:24px;margin-top:12px;flex-wrap:wrap;justify-content:center">
+        <div class="stat">
+          <div class="big accent-green">6</div>
+          <div class="label">parallel cauldrons</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,.08);align-self:stretch"></div>
+        <div class="stat">
+          <div class="big accent-blue">24h</div>
+          <div class="label">auto-delete sandboxes</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,.08);align-self:stretch"></div>
+        <div class="stat">
+          <div class="big accent-purple">8</div>
+          <div class="label">app categories</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:28px;flex-wrap:wrap;justify-content:center">
+      <span class="pill pill-teal">⚡ Daytona SDK</span>
+      <span class="pill pill-blue">🤖 Featherless AI</span>
+      <span class="pill pill-green">🎨 Mobbin MCP</span>
+      <span class="pill pill-purple">▲ Next.js 16</span>
+    </div>
+    <p style="margin-top:28px;font-size:13px;color:rgba(255,255,255,.3);letter-spacing:2px;text-transform:uppercase">Compare options · Cook in parallel · Pick the best</p>
+  </div>
+
+</div><!-- #slides -->
+
+<style>
+@keyframes cook-bar{from{width:0}to{width:100%}}
+</style>
+
+<script>
+// ── PARTICLES ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let W, H, pts = [];
+function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+function mkPt(){
+  const colors = ['rgba(0,255,148,','rgba(79,142,247,','rgba(176,110,255,','rgba(0,212,255,'];
+  const c = colors[Math.floor(Math.random()*colors.length)];
+  return{x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.5+.5,c};
+}
+function initPts(){ pts=[]; for(let i=0;i<80;i++) pts.push(mkPt()); }
+function drawPts(){
+  ctx.clearRect(0,0,W,H);
+  pts.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0||p.x>W) p.vx*=-1;
+    if(p.y<0||p.y>H) p.vy*=-1;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.c+'0.6)';
+    ctx.fill();
+  });
+  // Draw connections
+  for(let i=0;i<pts.length;i++){
+    for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x,pts[i].y);
+        ctx.lineTo(pts[j].x,pts[j].y);
+        ctx.strokeStyle=`rgba(255,255,255,${.04*(1-d/120)})`;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawPts);
+}
+resize(); initPts(); drawPts();
+window.addEventListener('resize',()=>{ resize(); initPts(); });
+
+// ── SLIDES ─────────────────────────────────────────────────────────────────
+const slides = document.querySelectorAll('.slide');
+const dots = document.querySelectorAll('.dot');
+const bar = document.getElementById('progress-bar');
+const counter = document.getElementById('slide-counter');
+let cur = 0, total = slides.length;
+
+function goTo(n){
+  if(n < 0 || n >= total) return;
+  slides[cur].classList.remove('active');
+  slides[cur].classList.add('exit');
+  setTimeout(()=>slides[cur].classList.remove('exit'), 600);
+  dots[cur].classList.remove('active');
+  cur = n;
+  slides[cur].classList.add('active');
+  dots[cur].classList.add('active');
+  bar.style.width = ((cur+1)/total*100)+'%';
+  counter.textContent = String(cur+1).padStart(2,'0')+' / '+String(total).padStart(2,'0');
+}
+function next(){ goTo(cur+1); }
+function prev(){ goTo(cur-1); }
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'||e.key===' '||e.key==='ArrowDown') { e.preventDefault(); next(); }
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') { e.preventDefault(); prev(); }
+});
+
+// Touch swipe
+let tx=0;
+document.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; });
+document.addEventListener('touchend', e=>{
+  const dx=e.changedTouches[0].clientX-tx;
+  if(Math.abs(dx)>50){ dx<0?next():prev(); }
+});
+
+// ── TIMER ──────────────────────────────────────────────────────────────────
+const timerEl = document.getElementById('timer');
+let seconds = 240, started = false;
+function startTimer(){
+  started = true;
+  const iv = setInterval(()=>{
+    seconds--;
+    if(seconds<=0){ clearInterval(iv); timerEl.textContent='0:00'; timerEl.className='danger'; return; }
+    const m=Math.floor(seconds/60), s=seconds%60;
+    timerEl.textContent=m+':'+(s<10?'0':'')+s;
+    if(seconds<=60) timerEl.className='danger';
+    else if(seconds<=90) timerEl.className='warn';
+  },1000);
+}
+
+// Start timer on first slide advance
+document.addEventListener('keydown', ()=>{ if(!started) startTimer(); }, {once:true});
+document.querySelectorAll('.dot').forEach(d=>d.addEventListener('click',()=>{ if(!started) startTimer(); },{once:true}));
+</script>
+</body>
+</html>
