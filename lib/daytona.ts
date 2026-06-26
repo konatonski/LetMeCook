@@ -3,13 +3,13 @@ import type { CauldronChip } from "@/types";
 import { generatePreviewHtml } from "./preview";
 import { storePreview } from "./preview-store";
 
-const daytona = new Daytona();
-
 export async function cookCauldron(
   cauldronId: string,
   chips: CauldronChip[],
   appDescription: string
 ): Promise<{ previewUrl: string }> {
+  const daytona = new Daytona();
+
   // 1. Generate the HTML preview with AI
   const html = await generatePreviewHtml(chips, appDescription);
 
