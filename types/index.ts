@@ -26,6 +26,8 @@ export interface IngredientOption {
   id: string;
   label: string;
   tagline: string; // one line, plain English, no jargon
+  pros: string[];
+  cons: string[];
   categoryId: CategoryId;
   color: ColorName;
   npm: string[]; // packages to install in sandbox
@@ -56,9 +58,7 @@ export interface Cauldron {
   name: string; // "Cauldron A", "Cauldron B"
   chips: CauldronChip[];
   state: CauldronState;
-  sandboxId?: string;
   previewUrl?: string;
-  buildLog?: string[];
   error?: string;
   createdAt: number;
 }
@@ -75,7 +75,6 @@ export interface IngredientsManifest {
 
 export interface CookResult {
   cauldronId: string;
-  sandboxId: string;
   previewUrl: string;
 }
 
